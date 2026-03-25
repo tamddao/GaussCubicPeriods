@@ -13,7 +13,7 @@
 \\ --- Full readable version ---
 
 e3(q) = {
-  my(bmax = sqrtint(q\7) + 1);
+  my(bmax = sqrtint(4*q\27) + 1);
   for(b = -bmax, bmax,
     my(d = 4*q - 27*b^2, s);
     if(d >= 0 && issquare(d, &s),
