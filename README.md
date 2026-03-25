@@ -78,6 +78,6 @@ If you use this code, please cite:
   author = {Dao Van Tam},
   title  = {Explicit Formulas for Cubic Gauss Periods via the Representation $q = a^2+ab+7b^2$},
   year   = {2025},
-  note   = {Lean 4 verification, \url{https://github.com/USERNAME/GaussCubicPeriods}}
+  note   = {Lean 4 verification, \url{https://github.com/tamddao/GaussCubicPeriods}}
 }
 ```
