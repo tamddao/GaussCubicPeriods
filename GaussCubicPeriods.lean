@@ -4,7 +4,7 @@
 # Supplementary formal verification for:
 #   "Explicit Formulas for Cubic Gauss Periods
 #    via the Representation q = a²+ab+7b²"
-#   by Dao Van Tam, Journal of Integer Sequences (submitted)
+#   by Dao Van Tam, 2025
 #
 # STRUCTURE:
 #   §1  Eisenstein integer algebra  (ring identities)
@@ -405,6 +405,9 @@ theorem disc_formula (a b : ℤ) :
 end GaussCubicPeriods
 
 namespace GaussCubicPeriods
+
+/-!
+## §6  Integrality: 27 ∣ (c+3)q − 1
 
 We prove that e₃ = ((c+3)q-1)/27 is always an integer.
 Two approaches are given:
