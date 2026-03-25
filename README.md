@@ -3,7 +3,7 @@
 Companion Lean 4 + Mathlib 4 code for the paper:
 
 > **"Explicit Formulas for Cubic Gauss Periods via the Representation q = a² + ab + 7b²"**
-> Dao Van Tam, 2025
+> Dao Van Tam, 2026
 
 OEIS sequence: [A394567](https://oeis.org/A394567)
 
@@ -60,8 +60,8 @@ lake build
 
 | Metric | Value |
 |--------|-------|
-| Lines | ~600 |
-| Theorems | 40+ |
+| Lines | ~675 |
+| Theorems | 50+ |
 | Axioms | 1 |
 | sorry | 0 |
 
@@ -78,6 +78,6 @@ If you use this code, please cite:
   author = {Dao Van Tam},
   title  = {Explicit Formulas for Cubic Gauss Periods via the Representation $q = a^2+ab+7b^2$},
   year   = {2025},
-  note   = {Lean 4 verification, \url{https://github.com/tamddao/GaussCubicPeriods}}
+  note   = {Lean 4 verification}
 }
 ```
