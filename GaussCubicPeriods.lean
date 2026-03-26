@@ -1,5 +1,5 @@
 /-!
-# GaussCubicPeriods_v14.lean
+# GaussCubicPeriods.lean
 # Lean 4 + Mathlib 4
 # Supplementary formal verification for:
 #   "Explicit Formulas for Cubic Gauss Periods
