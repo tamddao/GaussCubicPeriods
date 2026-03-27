@@ -1,3 +1,13 @@
+-- GaussCubicPeriods.lean  (Lean 4 + Mathlib 4)
+-- Supplementary formal verification for:
+--   "Explicit Formulas for Cubic Gauss Periods
+--    via the Representation q = a²+ab+7b²"
+--   by Dao Van Tam, 2026
+-- AXIOM COUNT: 1  (IR_Jacobi_Primary)
+-- SORRY COUNT: 0
+
+import Mathlib
+
 /-!
 # GaussCubicPeriods.lean
 # Lean 4 + Mathlib 4
@@ -31,11 +41,6 @@
 # AXIOM COUNT: 1  (IR_Jacobi_Primary)
 # SORRY COUNT: 0
 -/
-
-import Mathlib.Tactic
-import Mathlib.Data.Int.Defs
-import Mathlib.Data.Int.ModCast
-import Mathlib.Data.Nat.Prime.Basic
 
 namespace GaussCubicPeriods
 
@@ -88,7 +93,7 @@ theorem Eisen.norm_self_mul_conj (α : Eisen) :
 
 /-- Conjugation is an involution: conj(conj(α)) = α. -/
 theorem Eisen.conj_conj (α : Eisen) : α.conj.conj = α := by
-  simp [Eisen.conj]; ring
+  simp [Eisen.conj]
 
 /-- The algebraic identity: 4·N(a + bω) = (2a-b)² + 3b².
     Corresponds to Lemma 3.4 in the paper. -/
@@ -127,8 +132,11 @@ instance Eisen.decidablePrimary (α : Eisen) : Decidable α.isPrimary :=
 theorem Eisen.conj_primary {α : Eisen} (h : α.isPrimary) :
     α.conj.isPrimary := by
   obtain ⟨ha, hb⟩ := h
-  exact ⟨by simp [Eisen.conj]; omega,
-         by simp [Eisen.conj]; omega⟩
+  constructor
+  · show (α.re - α.im) % 3 = 2
+    omega
+  · show (-α.im) % 3 = 0
+    omega
 
 /-- The φ-coordinate X = 2·re - im of a primary element satisfies X ≡ 1 (mod 3).
     This is used in the bijection φ : P_q → S_q. -/
@@ -139,7 +147,7 @@ theorem Eisen.primary_X_mod3 {α : Eisen} (h : α.isPrimary) :
 /-- If α is primary and π ≠ π̄, then im(α) ≠ 0.
     (Contrapositive: im = 0 implies re² = N(α), so N(α) is a perfect square.) -/
 theorem Eisen.primary_im_ne_zero_of_prime_norm {α : Eisen}
-    (hprim : α.isPrimary) (hn : α.norm > 0)
+    (_hprim : α.isPrimary) (_hn : α.norm > 0)
     (hnsq : ∀ k : ℤ, α.norm ≠ k ^ 2) : α.im ≠ 0 := by
   intro him
   apply hnsq α.re
@@ -152,8 +160,8 @@ theorem Eisen.ne_conj_of_im_ne_zero {π : Eisen} (h : π.im ≠ 0) :
   have : π.im = -π.im := by
     have := congr_arg Eisen.im heq
     simp [Eisen.conj] at this
-    linarith
-  linarith
+    omega
+  omega
 
 end GaussCubicPeriods
 
@@ -203,8 +211,8 @@ theorem primary_unique_in_orbit (α : Eisen) (hα : α.isPrimary)
   simp [units_Eisen] at hu
   obtain ⟨ha, hb⟩ := hα
   obtain ⟨ha', hb'⟩ := hprim
-  simp [Eisen.mul, Eisen.isPrimary] at ha' hb' ⊢
-  rcases hu with rfl | rfl | rfl | rfl | rfl | rfl <;> omega
+  simp only [Eisen.mul] at ha' hb'
+  rcases hu with rfl | rfl | rfl | rfl | rfl | rfl <;> simp_all <;> omega
 
 end GaussCubicPeriods
 
@@ -303,13 +311,23 @@ theorem phi_well_defined (a b : ℤ) (hprim : (⟨a, b⟩ : Eisen).isPrimary)
     (q : ℤ) (hn : (⟨a, b⟩ : Eisen).norm = q) :
     (2 * a - b) % 3 = 1 ∧
     (2 * a - b) ^ 2 + 27 * (b / 3) ^ 2 = 4 * q := by
-  obtain ⟨ha, hb⟩ := hprim
-  constructor
-  · omega
-  · have hb3 : b = 3 * (b / 3) := by omega
-    rw [← hn]
-    simp [Eisen.norm]
-    nlinarith [hb3]
+  -- Extract ha : a%3=2 and hb : b%3=0 from isPrimary
+  have ha : a % 3 = 2 := hprim.1
+  have hb : b % 3 = 0 := hprim.2
+  -- Part 1: (2a-b) ≡ 1 (mod 3) follows from ha and hb
+  refine ⟨by omega, ?_⟩
+  -- Part 2: norm identity
+  have hnorm : q = a ^ 2 - a * b + b ^ 2 := by
+    have h : (⟨a, b⟩ : Eisen).norm = a ^ 2 - a * b + b ^ 2 := rfl
+    rw [← hn]; exact h
+  -- b = 3*(b/3) since b%3=0
+  have hbk : b = 3 * (b / 3) := by
+    have h := Int.emod_add_mul_ediv b 3; omega
+  -- Set k = b/3, substitute b = 3k, prove by nlinarith
+  obtain ⟨k, hk⟩ : ∃ k : ℤ, b = 3 * k := ⟨b / 3, hbk⟩
+  have hdiv : b / 3 = k := by omega
+  rw [hnorm, hdiv, hk]
+  ring
 
 /-- φ is injective: (2a₁-b₁, b₁/3) = (2a₂-b₂, b₂/3) → (a₁,b₁) = (a₂,b₂). -/
 theorem phi_injective (a₁ b₁ a₂ b₂ : ℤ)
@@ -364,8 +382,9 @@ theorem improper_preserves_c (a b : ℤ) :
 
 /-- The two d-values for the same canonical c:
     d₁ = (a+2b+1)/3 and d₂ = (a-b+1)/3 satisfy d₁+d₂ = (c+2)/3. -/
+-- d_sum: note the correct identity
 theorem d_sum (a b : ℤ) :
-    (a + 2 * b + 1) + ((a + b) + 2 * (-b) + 1) = 2 * (2 * a + b) + 2 - (2 * a + b) + 2 := by ring
+    (a + 2 * b + 1) + (a - b + 1) = 2 * a + b + 2 := by ring
 
 /-- Cleaner version: d₁ + d₂ = (2a+b+2)/3 when both are divided by 3. -/
 theorem d_sum_clean (a b : ℤ) :
@@ -377,18 +396,14 @@ theorem d_diff (a b : ℤ) :
 
 /-- q = 9n²+3n+1 implies d=0 is achievable: take a = -2n-1, b = n. -/
 theorem d0_form_plus (n : ℤ) :
-    let a := -2 * n - 1
-    let b := n
-    a ^ 2 + a * b + 7 * b ^ 2 = 9 * n ^ 2 + 3 * n + 1 ∧
-    a + 2 * b + 1 = 0 := by
+    (-2*n-1)^2 + (-2*n-1)*n + 7*n^2 = 9*n^2+3*n+1 ∧
+    (-2*n-1) + 2*n + 1 = 0 := by
   constructor <;> ring
 
 /-- q = 9n²-3n+1 implies d=0 is achievable: take a = n-1, b = -n. -/
 theorem d0_form_minus (n : ℤ) :
-    let a := n - 1
-    let b := -n
-    a ^ 2 + a * b + 7 * b ^ 2 = 9 * n ^ 2 - 3 * n + 1 ∧
-    a + 2 * b + 1 = 0 := by
+    (2*n-1)^2 + (2*n-1)*(-n) + 7*(-n)^2 = 9*n^2-3*n+1 ∧
+    (2*n-1) + 2*(-n) + 1 = 0 := by
   constructor <;> ring
 
 /-- RCP condition: (a+2b)(-b) + 3b² + (ab-b²) = 0. -/
@@ -400,13 +415,12 @@ theorem rcp_condition (a b : ℤ) :
     27·disc = 3·E₂² - 4·E₂³ + 4·E₃ - 6·E₂·E₃ - E₃² = 27·b²·q².
     Corresponds to Corollary in §6 of the paper. -/
 theorem disc_formula (a b : ℤ) :
-    let q := a ^ 2 + a * b + 7 * b ^ 2
-    let c := 2 * a + b
-    let e2_num := 1 - q             -- = 3·e₂
-    let e3_num := (c + 3) * q - 1   -- = 27·e₃
-    3 * e2_num ^ 2 - 4 * e2_num ^ 3 + 4 * e3_num
-    - 6 * e2_num * e3_num - e3_num ^ 2 =
-    27 * b ^ 2 * q ^ 2 := by ring
+    3 * (1 - (a^2+a*b+7*b^2))^2
+    - 4 * (1 - (a^2+a*b+7*b^2))^3
+    + 4 * ((2*a+b+3)*(a^2+a*b+7*b^2)-1)
+    - 6 * (1-(a^2+a*b+7*b^2)) * ((2*a+b+3)*(a^2+a*b+7*b^2)-1)
+    - ((2*a+b+3)*(a^2+a*b+7*b^2)-1)^2 =
+    27 * b^2 * (a^2+a*b+7*b^2)^2 := by ring
 
 end GaussCubicPeriods
 
@@ -434,30 +448,45 @@ theorem cubic_div_27 (k : ℤ) :
     (27 : ℤ) ∣ (3 * k + 1 - 1) * (3 * k + 1 + 2) ^ 2 :=
   ⟨k * (k + 1) ^ 2, by ring⟩
 
-/-- MAIN INTEGRALITY THEOREM (universal polynomial identity):
-    For ALL a, b ∈ ℤ, setting c = 2a+b and q = a²+ab+7b²:
-      (c+3)q - 1 = 27 · w(a,b)
-    where w(a,b) = a³+2a²b+a²+7ab²+2ab+7b³+7b².
-    Proved by ring with explicit witness. -/
-theorem integrality_uniform (a b : ℤ) :
-    (27 : ℤ) ∣ (2 * a + b + 3) * (a ^ 2 + a * b + 7 * b ^ 2) - 1 :=
-  ⟨a ^ 3 + 2 * a ^ 2 * b + a ^ 2 + 7 * a * b ^ 2 + 2 * a * b +
-   7 * b ^ 3 + 7 * b ^ 2,
-   by ring⟩
+/-- MAIN INTEGRALITY THEOREM:
+    For q = a²+ab+7b² and c = 2a+b ≡ 1 (mod 3):
+    27 ∣ (c+3)q - 1.
+    Proof: 4[(c+3)q-1] = (c-1)(c+2)² + 27b²(c+3)
+    using 4q = c²+27b² (lemma_4q).
+    Since c≡1(mod 3): (c-1)≡0(mod 3) and (c+2)≡0(mod 3),
+    so (c-1)(c+2)²≡0(mod 27). Hence 27∣4[(c+3)q-1],
+    and gcd(4,27)=1 gives 27∣(c+3)q-1. -/
+theorem integrality_uniform (a b : ℤ) (hc : (2 * a + b) % 3 = 1) :
+    (27 : ℤ) ∣ (2 * a + b + 3) * (a ^ 2 + a * b + 7 * b ^ 2) - 1 := by
+  -- Let c = 2a+b, q = a²+ab+7b²
+  set c := 2 * a + b with hc_def
+  set q := a ^ 2 + a * b + 7 * b ^ 2
+  -- Key identity: 4[(c+3)q-1] = (c-1)(c+2)² + 27b²(c+3)
+  have hkey : 4 * ((c + 3) * q - 1) =
+      (c - 1) * (c + 2) ^ 2 + 27 * b ^ 2 * (c + 3) := by
+    simp only [q, c]; ring
+  -- (c-1) ≡ 0 (mod 3) and (c+2) ≡ 0 (mod 3)
+  have hc1 : (c - 1) % 3 = 0 := by omega
+  have hc2 : (c + 2) % 3 = 0 := by omega
+  -- So 27 ∣ (c-1)(c+2)²
+  have hdiv : (27 : ℤ) ∣ (c - 1) * (c + 2) ^ 2 := by
+    obtain ⟨k1, hk1⟩ := Int.dvd_of_emod_eq_zero hc1
+    obtain ⟨k2, hk2⟩ := Int.dvd_of_emod_eq_zero hc2
+    -- (c-1)*(c+2)^2 = 3k1*(3k2)^2 = 27*k1*k2^2
+    exact ⟨k1 * k2 ^ 2, by rw [hk1, hk2]; ring⟩
+  -- And 27 ∣ 27b²(c+3)
+  have hdiv2 : (27 : ℤ) ∣ 27 * b ^ 2 * (c + 3) := ⟨b ^ 2 * (c + 3), by ring⟩
+  -- gcd(27,4)=1, so 27 ∣ (c+3)q-1
+  -- Bezout: 4*7 + 27*(-1) = 1, so X = 7*(4X) - 27*X
+  have hdiv4' : (27 : ℤ) ∣ 4 * ((c + 3) * q - 1) := by
+    rw [hkey]; exact dvd_add hdiv hdiv2
+  obtain ⟨k4, hk4⟩ := hdiv4'
+  exact ⟨(7 * k4 - ((c + 3) * q - 1)), by linarith⟩
 
-/-- The explicit witness polynomial w(a,b) satisfies
-    (c+3)q - 1 = 27·w(a,b) as a polynomial identity. -/
-theorem integrality_witness_eq (a b : ℤ) :
-    (2 * a + b + 3) * (a ^ 2 + a * b + 7 * b ^ 2) - 1 =
-    27 * (a ^ 3 + 2 * a ^ 2 * b + a ^ 2 + 7 * a * b ^ 2 +
-          2 * a * b + 7 * b ^ 3 + 7 * b ^ 2) := by ring
-
-/-- Modular proof of integrality (alternative, via c ≡ 1 mod 3):
-    4·[(c+3)q-1] ≡ c³+3c²-4 = (c-1)(c+2)² ≡ 0 (mod 27)
-    since c = 3k+1 gives (c-1)(c+2)² = 3k·9(k+1)² = 27k(k+1)². -/
+/-- Convenience alias. -/
 theorem integrality_mod_proof (a b : ℤ) (hc : (2 * a + b) % 3 = 1) :
     (27 : ℤ) ∣ (2 * a + b + 3) * (a ^ 2 + a * b + 7 * b ^ 2) - 1 :=
-  integrality_uniform a b
+  integrality_uniform a b hc
 
 end GaussCubicPeriods
 
@@ -517,18 +546,20 @@ theorem jacobi_coords (a b : ℤ) (q : ℕ)
       2 * J.re - J.im = 2 * a + b := by
   obtain ⟨J, hJprim, hJnorm, hJcase⟩ := IR_Jacobi_Primary a b q hq_form hq_prime hc
   refine ⟨J, hJprim, hJnorm, ?_⟩
-  rcases hJcase with rfl | rfl
+  rcases hJcase with hpi | hconj
   · -- Case J = π₀ = ⟨a+2b, 3b⟩
+    rw [hpi]
     exact pi0_phi_coord a b
   · -- Case J = π̄₀ = conj(⟨a+2b, 3b⟩)
+    rw [hconj]
     exact pi0_conj_phi_coord a b
 
 /-- The main formula: 27 ∣ (c+3)q - 1.
     This is the algebraic content of Theorem 5.1 in the paper,
     proved purely by ring (no axiom needed). -/
-theorem main_formula (a b : ℤ) :
+theorem main_formula (a b : ℤ) (hc : (2 * a + b) % 3 = 1) :
     (27 : ℤ) ∣ (2 * a + b + 3) * (a ^ 2 + a * b + 7 * b ^ 2) - 1 :=
-  integrality_uniform a b
+  integrality_uniform a b hc
 
 end GaussCubicPeriods
 
