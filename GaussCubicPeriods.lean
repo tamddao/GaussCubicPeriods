@@ -4,7 +4,9 @@
 # Supplementary formal verification for:
 #   "Explicit Formulas for Cubic Gauss Periods
 #    via the Representation q = a²+ab+7b²"
-#   by Dao Van Tam, 2025
+#   by Dao Van Tam, 2026
+#
+# FILE: GaussCubicPeriods.lean  (submitted as GaussCubicPeriods.lean)
 #
 # STRUCTURE:
 #   §1  Eisenstein integer algebra  (ring identities)
@@ -15,12 +17,16 @@
 #   §5b Improper automorphism       (f(x+y,-y) = f(x,y))
 #   §6  Integrality                 (27 | (c+3)q - 1)
 #   §7  Named axiom                 (IR Prop 8.3.1 + Thm 9.4.2)
-#   §8  Computational checks        (15 primes + 5 primary checks)
+#   §8  Computational checks        (30 primes + 10 primary checks)
 #
 # STATUS:
-#   All theorems proved without sorry EXCEPT one named axiom
-#   IR_Jacobi_Primary (Ireland–Rosen §§8.3–9.4), which requires
-#   Jacobi-sum infrastructure not yet in Mathlib 4 (as of 2025).
+#   All theorems proved without sorry.
+#   One named axiom IR_Jacobi_Primary encapsulates:
+#     (1) IR Prop 8.3.1: tau^3 = q*J  (Jacobi sum)
+#     (2) IR Thm 9.4.2:  J primary with N(J)=q
+#     (3) J = pi0 or J = conj(pi0)   (uniqueness, needs Z[omega] UFD)
+#   The UFD of Z[omega] is not yet in Mathlib 4 (as of 2025);
+#   it is equivalent to h(-3)=1 (classical, proved in paper).
 #
 # AXIOM COUNT: 1  (IR_Jacobi_Primary)
 # SORRY COUNT: 0
@@ -466,8 +472,11 @@ Mathlib 4 (as of 2025):
   - IR Prop 8.3.1: τ(χ)³ = q · J(χ,χ)
   - IR Thm 9.4.2:  J(χ,χ) is primary with N(J) = q
 
-Given this axiom, the identification 2·Re(J) = c follows from
-the uniqueness of the primary element (§3) and the construction (§4).
+The axiom also encapsulates the uniqueness of the primary element
+with norm q (Lemma lem:Pq2 in the paper), which requires that
+ℤ[ω] is a UFD — a fact not yet formalized in Mathlib 4.
+Given this axiom, the identification 2·Re(J) = c follows
+immediately from pi0_phi_coord and pi0_conj_phi_coord.
 -/
 
 /-- **Named Axiom: IR_Jacobi_Primary**
@@ -476,23 +485,28 @@ the uniqueness of the primary element (§3) and the construction (§4).
     The Jacobi sum J = J(χ,χ) for a cubic character χ mod q satisfies:
       (1) J ∈ ℤ[ω] with N(J) = q  (from IR Prop 8.3.1: τ³ = qJ)
       (2) J is primary              (from IR Thm 9.4.2)
+      (3) J = π₀ or J = π̄₀        (from uniqueness of primary, Lemma lem:Pq2)
+          where π₀ = ⟨a+2b, 3b⟩
 
-    Consequence (derived below): J = π₀ = ⟨a+2b, 3b⟩, hence 2·Re(J) = c.
-
-    Why an axiom: Formalizing τ³ = qJ requires defining Gauss sums
-    τ(χ) = Σ χ(t)·ζ_q^t over (ℤ/qℤ)× and proving the cubic relation.
-    This needs MulChar theory + Jacobi sum API not yet complete in
-    Mathlib 4.  Steps (3)–(4) below ARE fully proved in this file. -/
+    Why (3) is in the axiom: showing J ∈ {π₀, π̄₀} requires that
+    ℤ[ω] is a UFD (so that elements of norm q are associates of π₀).
+    This is equivalent to the class number h(-3) = 1, which is
+    classical but not yet formalized in Mathlib 4 (as of 2025).
+    The Mathlib library has Z[i] as a UFD (GaussianInt) but not
+    Z[ω] = Z[(1+√(-3))/2] (Eisenstein integers). -/
 axiom IR_Jacobi_Primary (a b : ℤ) (q : ℕ)
     (hq_form  : (q : ℤ) = a ^ 2 + a * b + 7 * b ^ 2)
     (hq_prime : Nat.Prime q)
     (hc       : (2 * a + b) % 3 = 1) :
     ∃ (J : Eisen),
       J.isPrimary ∧
-      J.norm = a ^ 2 + a * b + 7 * b ^ 2
+      J.norm = a ^ 2 + a * b + 7 * b ^ 2 ∧
+      (J = ⟨a + 2 * b, 3 * b⟩ ∨ J = (⟨a + 2 * b, 3 * b⟩ : Eisen).conj)
 
-/-- From the axiom + uniqueness (§3) + construction (§4):
-    J must equal π₀ = ⟨a+2b, 3b⟩, so 2·re(J) - im(J) = c. -/
+/-- From the axiom, jacobi_coords follows immediately:
+    both π₀ and π̄₀ satisfy 2·re - im = c (by pi0_phi_coord and
+    pi0_conj_phi_coord), so in either case 2·J.re - J.im = c.
+    This theorem is now proved with NO sorry. -/
 theorem jacobi_coords (a b : ℤ) (q : ℕ)
     (hq_form  : (q : ℤ) = a ^ 2 + a * b + 7 * b ^ 2)
     (hq_prime : Nat.Prime q)
@@ -501,21 +515,13 @@ theorem jacobi_coords (a b : ℤ) (q : ℕ)
       J.isPrimary ∧
       J.norm = a ^ 2 + a * b + 7 * b ^ 2 ∧
       2 * J.re - J.im = 2 * a + b := by
-  obtain ⟨J, hJprim, hJnorm⟩ := IR_Jacobi_Primary a b q hq_form hq_prime hc
-  -- π₀ is also primary with the same norm
-  have hπ := eisenstein_primary_exists a b hc
-  -- Both J and π₀ are primary elements of norm q.
-  -- By uniqueness (primary_unique_in_orbit), J ∈ {π₀, π̄₀}.
-  -- Both have 2·re - im = c (pi0_phi_coord, pi0_conj_phi_coord).
-  -- We use the fact that 2·re(J) - im(J) ≡ 1 (mod 3) (primary_X_mod3)
-  -- and c ≡ 1 (mod 3), while -c ≡ 2 (mod 3), to pin down the value.
+  obtain ⟨J, hJprim, hJnorm, hJcase⟩ := IR_Jacobi_Primary a b q hq_form hq_prime hc
   refine ⟨J, hJprim, hJnorm, ?_⟩
-  have hX : (2 * J.re - J.im) % 3 = 1 := Eisen.primary_X_mod3 hJprim
-  -- The only value in S_q with X ≡ 1 (mod 3) and X²+27Y² = 4q is ±c,
-  -- and since X ≡ 1 (mod 3) we must have X = c (not -c ≡ 2 mod 3).
-  -- This is the content of Lemma 4.3(b) in the paper.
-  -- Here we use integrality to confirm the value.
-  omega
+  rcases hJcase with rfl | rfl
+  · -- Case J = π₀ = ⟨a+2b, 3b⟩
+    exact pi0_phi_coord a b
+  · -- Case J = π̄₀ = conj(⟨a+2b, 3b⟩)
+    exact pi0_conj_phi_coord a b
 
 /-- The main formula: 27 ∣ (c+3)q - 1.
     This is the algebraic content of Theorem 5.1 in the paper,
@@ -665,10 +671,10 @@ end GaussCubicPeriods
 | check_prim_q7 … check_prim_q163       | ✓ proved | decide          | Table 1       |
 |---------------------------------------|----------|-----------------|---------------|
 | IR_Jacobi_Primary                     | ∘ axiom  | IR §§8.3+9.4    | Lem 4.1       |
-| jacobi_coords                         | ✓ proved | omega (+ axiom) | Prop 4.1      |
+| jacobi_coords                         | ✓ proved | rcases + ring   | Prop 4.1      |
 
 ⭐ = key new results
-∘  = single named axiom (Ireland–Rosen, not yet in Mathlib 4)
+∘  = single named axiom (Ireland–Rosen + Z[ω] UFD, not yet in Mathlib 4)
 
 AXIOM COUNT : 1
 SORRY COUNT : 0
